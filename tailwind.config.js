@@ -6,7 +6,6 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Fira Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['Fira Code', 'ui-monospace', 'monospace'],
       },
     },

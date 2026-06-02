@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Check, Trash2, CalendarDays, Clock, GraduationCap, Sun, AlertCircle } from 'lucide-react';
+import { Download, Check, Trash2, AlertCircle } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SA Public Holidays
@@ -56,7 +56,7 @@ const getHolidayForDate = (dateStr) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Schedule Definitions
+// Schedules
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MONDAY_SCHEDULE = [
@@ -100,13 +100,10 @@ const FRIDAY_SCHEDULE = [
   { id: 'assembly', name: 'Assembly', startTime: '13:30', endTime: '14:30' },
 ];
 
-// Rows shown in the timetable grid — lessons + utility only (breaks are fixed)
-const GRID_ROWS = REGULAR_SCHEDULE.filter(
-  p => typeof p.id === 'number' || p.id === 'utility'
-);
+const GRID_ROWS = REGULAR_SCHEDULE.filter(p => typeof p.id === 'number' || p.id === 'utility');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// localStorage helpers
+// Storage
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'savedSchedules';
@@ -132,18 +129,11 @@ const getScheduleForDate = (dateStr) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Day column accent colours (Day 1–7)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DAY_HEAD_BG = ['', 'bg-indigo-50', 'bg-sky-50', 'bg-violet-50', 'bg-teal-50', 'bg-orange-50', 'bg-rose-50', 'bg-amber-50'];
-const DAY_CELL_BG = ['', 'bg-indigo-50/40', 'bg-sky-50/40', 'bg-violet-50/40', 'bg-teal-50/40', 'bg-orange-50/40', 'bg-rose-50/40', 'bg-amber-50/40'];
-
-// ─────────────────────────────────────────────────────────────────────────────
 // App
 // ─────────────────────────────────────────────────────────────────────────────
 
-function App() {
-  const [saveStatus, setSaveStatus] = useState({ text: 'All changes saved', showTick: true });
+export default function App() {
+  const [saveStatus, setSaveStatus] = useState({ text: 'All changes saved', saved: true });
 
   const [timetable, setTimetable] = useState(() => {
     const saved = localStorage.getItem('timetableTemplates');
@@ -161,46 +151,35 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('timetableTemplates', JSON.stringify(timetable));
-    setSaveStatus({ text: 'Saving…', showTick: false });
-    const t = setTimeout(() => setSaveStatus({ text: 'All changes saved', showTick: true }), 1000);
+    setSaveStatus({ text: 'Saving…', saved: false });
+    const t = setTimeout(() => setSaveStatus({ text: 'All changes saved', saved: true }), 1000);
     return () => clearTimeout(t);
   }, [timetable]);
-
-  // ── weekday generation with holiday auto-detection ──────────────────────
 
   const generateWeekdays = (start, end) => {
     const dates = [];
     const cur = new Date(start);
     const endDate = new Date(end);
-    let dayNum = 1;
-    let weekNum = 1;
-    let weekBuf = [];
+    let dayNum = 1, weekNum = 1, weekBuf = [];
 
-    const startDow = cur.getDay();
-    if (startDow !== 1) {
-      cur.setDate(cur.getDate() + (startDow === 0 ? 1 : -(startDow - 1)));
-    }
+    const dow0 = cur.getDay();
+    if (dow0 !== 1) cur.setDate(cur.getDate() + (dow0 === 0 ? 1 : -(dow0 - 1)));
 
     while (cur <= endDate) {
       const dow = cur.getDay();
       if (dow !== 0 && dow !== 6) {
         const dateStr = cur.toISOString().split('T')[0];
         const holiday = getHolidayForDate(dateStr);
-        const entry = {
+        weekBuf.push({
           date: dateStr,
           dayNumber: holiday ? 0 : dayNum,
           dayOfWeek: dow,
           dayName: cur.toLocaleDateString('en-US', { weekday: 'long' }),
           weekNumber: weekNum,
           holiday: holiday ? holiday.name : null,
-        };
-        weekBuf.push(entry);
+        });
         if (!holiday) dayNum = dayNum === 7 ? 1 : dayNum + 1;
-        if (dow === 5 || cur >= endDate) {
-          dates.push(...weekBuf);
-          weekBuf = [];
-          weekNum++;
-        }
+        if (dow === 5 || cur >= endDate) { dates.push(...weekBuf); weekBuf = []; weekNum++; }
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -210,9 +189,7 @@ function App() {
   const handleDateRangeChange = (field, value) => {
     const next = { ...dateRange, [field]: value };
     setDateRange(next);
-    if (next.startDate && next.endDate) {
-      setDateAssignments(generateWeekdays(next.startDate, next.endDate));
-    }
+    if (next.startDate && next.endDate) setDateAssignments(generateWeekdays(next.startDate, next.endDate));
   };
 
   const updateDayNumber = (index, newNum) => {
@@ -223,28 +200,21 @@ function App() {
       if (newNum !== 0) {
         let last = newNum;
         for (let i = index + 1; i < next.length; i++) {
-          if (next[i].holiday) {
-            next[i] = { ...next[i], dayNumber: 0 };
-          } else {
-            last = last === 7 ? 1 : last + 1;
-            next[i] = { ...next[i], dayNumber: last };
-          }
+          if (next[i].holiday) { next[i] = { ...next[i], dayNumber: 0 }; }
+          else { last = last === 7 ? 1 : last + 1; next[i] = { ...next[i], dayNumber: last }; }
         }
       }
       return next;
     });
   };
 
-  // ── CSV export ──────────────────────────────────────────────────────────
-
   const generateAndDownload = () => {
     let csv = 'Subject,Start Date,Start Time,End Date,End Time,All Day Event,Description,Location,Private\n';
-
     const fmtDate = (d) => new Date(d).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     const fmtTime = (t) => {
       if (!t) return '';
       const [h, m] = t.split(':');
-      return new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return new Date(2000, 0, 1, +h, +m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     };
     const addRow = ({ subject, date, start, end, desc }) => {
       csv += [subject, fmtDate(date), fmtTime(start), fmtDate(date), fmtTime(end), 'FALSE', desc, '', 'FALSE']
@@ -253,23 +223,18 @@ function App() {
 
     dateAssignments.forEach(a => {
       if (a.dayNumber === 0) return;
-      const daySchedule = timetable[a.dayNumber];
-      if (!daySchedule) return;
-      getScheduleForDate(a.date).forEach(period => {
+      const ds = timetable[a.dayNumber];
+      if (!ds) return;
+      getScheduleForDate(a.date).forEach(p => {
         let subject = '', desc = '';
-        if (typeof period.id === 'number') {
-          subject = daySchedule[period.id]; desc = `Session ${period.id}`;
-        } else if (period.id === 'break1' || period.id === 'break2') {
-          subject = daySchedule[period.id] || 'Break'; desc = 'Break Time';
-        } else if (period.id === 'utility') {
-          subject = daySchedule[period.id] || 'Meeting/Utility'; desc = 'Meeting/Utility Session';
-        } else if (a.dayOfWeek === 1) {
-          if (period.id === 'homeroom') { subject = 'PD'; desc = 'Professional Development'; }
-          else if (period.id === 'meetings') { subject = 'Meetings'; desc = 'Staff Meetings'; }
-        } else if (a.dayOfWeek === 5 && period.id === 'assembly') {
-          subject = 'Assembly'; desc = 'School Assembly';
-        }
-        if (subject) addRow({ subject, date: a.date, start: period.startTime, end: period.endTime, desc });
+        if (typeof p.id === 'number') { subject = ds[p.id]; desc = `Session ${p.id}`; }
+        else if (p.id === 'break1' || p.id === 'break2') { subject = ds[p.id] || 'Break'; desc = 'Break Time'; }
+        else if (p.id === 'utility') { subject = ds[p.id] || 'Meeting/Utility'; desc = 'Meeting/Utility'; }
+        else if (a.dayOfWeek === 1) {
+          if (p.id === 'homeroom') { subject = 'PD'; desc = 'Professional Development'; }
+          else if (p.id === 'meetings') { subject = 'Meetings'; desc = 'Staff Meetings'; }
+        } else if (a.dayOfWeek === 5 && p.id === 'assembly') { subject = 'Assembly'; desc = 'School Assembly'; }
+        if (subject) addRow({ subject, date: a.date, start: p.startTime, end: p.endTime, desc });
       });
     });
 
@@ -296,144 +261,97 @@ function App() {
     setDateAssignments([]);
   };
 
-  const handleCellChange = (day, periodId, value) => {
-    setTimetable(prev => ({ ...prev, [day]: { ...prev[day], [periodId]: value } }));
-  };
+  const handleCellChange = (day, id, value) =>
+    setTimetable(prev => ({ ...prev, [day]: { ...prev[day], [id]: value } }));
 
-  const handleKeyNav = (e, rowEl, cellEl) => {
-    const cells = Array.from(rowEl.parentElement.children);
-    const rows = Array.from(rowEl.parentElement.parentElement.children);
-    const rowIdx = rows.indexOf(rowEl);
-    const cellIdx = Array.from(rowEl.children).indexOf(cellEl);
-
+  const handleKeyNav = (e, row, cell) => {
+    const rows = Array.from(row.parentElement.children);
+    const ri = rows.indexOf(row);
+    const ci = Array.from(row.children).indexOf(cell);
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
-      rows[rowIdx + 1]?.children[cellIdx]?.querySelector('input')?.focus();
-      e.preventDefault();
+      rows[ri + 1]?.children[ci]?.querySelector('input')?.focus(); e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      rows[rowIdx - 1]?.children[cellIdx]?.querySelector('input')?.focus();
-      e.preventDefault();
+      rows[ri - 1]?.children[ci]?.querySelector('input')?.focus(); e.preventDefault();
     } else if (e.key === 'ArrowLeft') {
-      rowEl.children[cellIdx - 1]?.querySelector('input')?.focus();
-      e.preventDefault();
+      row.children[ci - 1]?.querySelector('input')?.focus(); e.preventDefault();
     } else if (e.key === 'ArrowRight') {
-      rowEl.children[cellIdx + 1]?.querySelector('input')?.focus();
-      e.preventDefault();
+      row.children[ci + 1]?.querySelector('input')?.focus(); e.preventDefault();
     }
   };
 
-  // ── derived stats ───────────────────────────────────────────────────────
-
   const holidayCount = dateAssignments.filter(a => a.holiday).length;
-  const totalWeeks = dateAssignments.length > 0 ? dateAssignments[dateAssignments.length - 1].weekNumber : 0;
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-100 py-8 px-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
 
-        {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="clay-card px-6 py-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0"
-                   style={{ boxShadow: '4px 4px 14px rgba(79,70,229,0.35)' }}>
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 leading-tight">Parklands College</h1>
-                <p className="text-sm text-slate-400 font-medium">Timetable Generator</p>
-              </div>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="logo.png" alt="Parklands College" className="h-12 w-auto" />
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Parklands College — Timetable Generator</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Build your rotation and export to Google Calendar</p>
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
-                {saveStatus.showTick
-                  ? <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  : <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />}
-                <span>{saveStatus.text}</span>
-              </div>
-              <button
-                onClick={handleClearCalendar}
-                className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-100 active:bg-red-200 transition-colors duration-150 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                Clear
-              </button>
-            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-sm text-gray-500">
+              {saveStatus.saved
+                ? <Check size={14} className="text-green-500" />
+                : <span className="inline-block w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />}
+              {saveStatus.text}
+            </span>
+            <button
+              onClick={handleClearCalendar}
+              className="flex items-center gap-1.5 text-sm text-red-600 border border-red-200 bg-white px-3 py-1.5 rounded-md hover:bg-red-50 cursor-pointer transition-colors"
+            >
+              <Trash2 size={14} />
+              Clear
+            </button>
           </div>
         </div>
 
-        {/* ── Timetable Grid ────────────────────────────────────────────── */}
-        <div className="clay-card p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Clock className="w-5 h-5 text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Timetable Template</h2>
-              <p className="text-sm text-slate-400">Enter subjects for each Day 1–7 rotation</p>
-            </div>
+        {/* Timetable grid */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h2 className="font-medium text-gray-800">Timetable Template</h2>
+            <p className="text-sm text-gray-500">Enter subjects for each Day 1–7 rotation. Breaks, Assembly and Lines export automatically.</p>
           </div>
-
-          <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="min-w-full border-collapse text-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border-collapse">
               <thead>
-                <tr>
-                  <th className="border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide bg-slate-100 min-w-[110px]">
-                    Period
-                  </th>
-                  <th className="border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide bg-slate-100 min-w-[120px]">
-                    Time (Reg.)
-                  </th>
-                  {[1,2,3,4,5,6,7].map(day => (
-                    <th key={day}
-                        className={`border-r last:border-r-0 border-slate-200 px-3 py-3 text-center text-xs font-semibold text-slate-700 uppercase tracking-wide min-w-[88px] ${DAY_HEAD_BG[day]}`}>
-                      Day {day}
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[110px]">Period</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[115px]">Time</th>
+                  {[1,2,3,4,5,6,7].map(d => (
+                    <th key={d} className="text-center px-3 py-2.5 font-medium text-gray-600 border-r last:border-r-0 border-gray-200 min-w-[88px]">
+                      Day {d}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {GRID_ROWS.map(period => {
+              <tbody>
+                {GRID_ROWS.map((period, idx) => {
                   const isLesson = typeof period.id === 'number';
                   return (
-                    <tr key={period.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="border-r border-slate-200 px-4 py-2.5 whitespace-nowrap bg-white">
-                        {isLesson ? (
-                          <span className="flex items-center gap-2">
-                            <span className="w-5 h-5 bg-indigo-100 text-indigo-700 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              {period.id}
-                            </span>
-                            <span className="font-medium text-slate-700">{period.name}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                            {period.name}
-                          </span>
-                        )}
+                    <tr key={period.id} className={`border-b border-gray-100 ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}`}>
+                      <td className="px-4 py-2 border-r border-gray-200 text-gray-700 font-medium whitespace-nowrap">
+                        {isLesson ? period.name : <span className="text-gray-400 text-xs">{period.name}</span>}
                       </td>
-                      <td className="border-r border-slate-200 px-4 py-2.5 font-mono text-xs text-slate-400 whitespace-nowrap bg-white">
+                      <td className="px-4 py-2 border-r border-gray-200 text-gray-400 font-mono text-xs whitespace-nowrap">
                         {period.startTime}–{period.endTime}
                       </td>
                       {[1,2,3,4,5,6,7].map(day => (
-                        <td key={`${day}-${period.id}`}
-                            className={`border-r last:border-r-0 border-slate-200 p-1.5 ${DAY_CELL_BG[day]}`}>
+                        <td key={`${day}-${period.id}`} className="p-1.5 border-r last:border-r-0 border-gray-100">
                           <input
                             type="text"
                             value={timetable[day]?.[period.id] || ''}
                             onChange={(e) => handleCellChange(day, period.id, e.target.value)}
-                            onKeyDown={(e) => {
-                              const row = e.target.closest('tr');
-                              const cell = e.target.closest('td');
-                              handleKeyNav(e, row, cell);
-                            }}
-                            className="clay-input w-full px-2 py-1.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-300"
+                            onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
+                            placeholder={isLesson ? '—' : ''}
+                            className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
                             autoComplete="off"
                             spellCheck="false"
-                            placeholder={isLesson ? 'Subject…' : 'Optional…'}
                           />
                         </td>
                       ))}
@@ -443,144 +361,93 @@ function App() {
               </tbody>
             </table>
           </div>
-
-          <p className="mt-3 text-xs text-slate-400">
-            Breaks, Assembly, Homeroom, and Lines are fixed — they export automatically based on the day type.
-          </p>
         </div>
 
-        {/* ── Term Dates ────────────────────────────────────────────────── */}
-        <div className="clay-card p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <CalendarDays className="w-5 h-5 text-emerald-600" />
-            </div>
+        {/* Date range */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+          <h2 className="font-medium text-gray-800 mb-3">Term Dates</h2>
+          <div className="flex flex-wrap gap-4 items-end">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Term Dates</h2>
-              <p className="text-sm text-slate-400">SA public holidays are auto-detected and marked as No Schedule</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-6 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="start-date" className="text-sm font-medium text-slate-700">Start Date</label>
+              <label htmlFor="start-date" className="block text-sm text-gray-600 mb-1">Start</label>
               <input
                 id="start-date"
                 type="date"
                 value={dateRange.startDate}
                 onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
-                className="clay-input px-3 py-2.5 text-sm text-slate-800 cursor-pointer"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="end-date" className="text-sm font-medium text-slate-700">End Date</label>
+            <div>
+              <label htmlFor="end-date" className="block text-sm text-gray-600 mb-1">End</label>
               <input
                 id="end-date"
                 type="date"
                 value={dateRange.endDate}
                 onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
-                className="clay-input px-3 py-2.5 text-sm text-slate-800 cursor-pointer"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer"
               />
             </div>
           </div>
-
           {holidayCount > 0 && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl px-4 py-2.5 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>
-                <strong>{holidayCount}</strong> SA public {holidayCount === 1 ? 'holiday' : 'holidays'} detected and set to No Schedule
-              </span>
-            </div>
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-amber-700">
+              <AlertCircle size={14} />
+              {holidayCount} SA public {holidayCount === 1 ? 'holiday' : 'holidays'} detected and set to No Schedule
+            </p>
           )}
         </div>
 
-        {/* ── Daily Schedule ────────────────────────────────────────────── */}
+        {/* Date assignments */}
         {dateAssignments.length > 0 && (
-          <div className="clay-card p-6">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Sun className="w-5 h-5 text-violet-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Daily Schedule</h2>
-                  <p className="text-sm text-slate-400">
-                    {dateAssignments.length} school days · {totalWeeks} weeks
-                    {holidayCount > 0 && ` · ${holidayCount} holidays excluded`}
-                  </p>
-                </div>
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="font-medium text-gray-800">Daily Schedule</h2>
+              <span className="text-sm text-gray-500">
+                {dateAssignments.length} days · {dateAssignments[dateAssignments.length - 1]?.weekNumber} weeks
+              </span>
             </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {[
-                { label: 'Monday', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-                { label: 'Friday', cls: 'bg-violet-100 text-violet-700 border-violet-200' },
-                { label: 'Regular', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-                { label: 'Public Holiday', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-              ].map(({ label, cls }) => (
-                <span key={label} className={`text-xs font-medium px-2.5 py-1 rounded-full border ${cls}`}>{label}</span>
-              ))}
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
               <div className="max-h-96 overflow-y-auto">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-slate-100">
-                      <th className="border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide min-w-[70px]">Week</th>
-                      <th className="border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide min-w-[100px]">Day</th>
-                      <th className="border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide min-w-[110px]">Date</th>
-                      <th className="border-r border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide min-w-[160px]">Schedule</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide min-w-[130px]">Day #</th>
+                <table className="min-w-full text-sm border-collapse">
+                  <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 z-10">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[65px]">Week</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[100px]">Day</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[105px]">Date</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[160px]">Schedule</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-600 min-w-[120px]">Day #</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody>
                     {dateAssignments.map((a, index) => {
-                      const isFirstInWeek = index === 0 || a.weekNumber !== dateAssignments[index - 1].weekNumber;
+                      const isFirst = index === 0 || a.weekNumber !== dateAssignments[index - 1].weekNumber;
                       const scheduleType = a.dayOfWeek === 1 ? 'Monday' : a.dayOfWeek === 5 ? 'Friday' : 'Regular';
-                      let rowCls = 'transition-colors ';
-                      if (a.holiday) rowCls += 'bg-amber-50 hover:bg-amber-100/70';
-                      else if (a.dayOfWeek === 1) rowCls += 'bg-blue-50/60 hover:bg-blue-100/60';
-                      else if (a.dayOfWeek === 5) rowCls += 'bg-violet-50/60 hover:bg-violet-100/60';
-                      else rowCls += 'bg-white hover:bg-slate-50';
-                      if (isFirstInWeek) rowCls += ' border-t-2 border-slate-300';
+                      let rowCls = 'border-b border-gray-100 ';
+                      if (a.holiday) rowCls += 'bg-amber-50';
+                      else if (a.dayOfWeek === 1) rowCls += 'bg-blue-50/40';
+                      else if (a.dayOfWeek === 5) rowCls += 'bg-purple-50/30';
+                      if (isFirst && index !== 0) rowCls += ' border-t-2 border-gray-300';
 
                       return (
                         <tr key={a.date} className={rowCls}>
-                          <td className="border-r border-slate-200 px-4 py-2.5 text-xs">
-                            {isFirstInWeek && (
-                              <span className="bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded-md">
-                                Wk {a.weekNumber}
-                              </span>
-                            )}
+                          <td className="px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
+                            {isFirst ? `Wk ${a.weekNumber}` : ''}
                           </td>
-                          <td className="border-r border-slate-200 px-4 py-2.5 font-medium text-slate-700">{a.dayName}</td>
-                          <td className="border-r border-slate-200 px-4 py-2.5 font-mono text-xs text-slate-500">
+                          <td className="px-4 py-2 border-r border-gray-200 text-gray-700">{a.dayName}</td>
+                          <td className="px-4 py-2 border-r border-gray-200 font-mono text-xs text-gray-600">
                             {new Date(a.date).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </td>
-                          <td className="border-r border-slate-200 px-4 py-2.5">
+                          <td className="px-4 py-2 border-r border-gray-200">
                             {a.holiday ? (
-                              <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-medium px-2.5 py-1 rounded-full">
-                                <Sun className="w-3 h-3" />
-                                {a.holiday}
-                              </span>
+                              <span className="text-xs text-amber-700 font-medium">{a.holiday}</span>
                             ) : (
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${
-                                scheduleType === 'Monday' ? 'bg-blue-100 text-blue-700' :
-                                scheduleType === 'Friday' ? 'bg-violet-100 text-violet-700' :
-                                'bg-slate-100 text-slate-600'
-                              }`}>
-                                {scheduleType}
-                              </span>
+                              <span className="text-xs text-gray-500">{scheduleType}</span>
                             )}
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-2">
                             <select
                               value={a.dayNumber}
                               onChange={(e) => updateDayNumber(index, parseInt(e.target.value))}
-                              className="clay-input px-2 py-1 text-xs text-slate-700 cursor-pointer focus:ring-2 focus:ring-indigo-300"
+                              className="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
                             >
                               <option value={0}>No Schedule</option>
                               {[1,2,3,4,5,6,7].map(d => (
@@ -598,14 +465,14 @@ function App() {
           </div>
         )}
 
-        {/* ── Generate Button ───────────────────────────────────────────── */}
+        {/* Generate */}
         <div className="flex justify-end pb-2">
           <button
             onClick={generateAndDownload}
             disabled={dateAssignments.length === 0}
-            className="clay-btn-primary flex items-center gap-2.5 px-6 py-3 text-base"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-md transition-colors cursor-pointer"
           >
-            <Download className="w-5 h-5" />
+            <Download size={16} />
             Generate Calendar CSV
           </button>
         </div>
@@ -614,5 +481,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
