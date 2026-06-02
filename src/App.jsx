@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Check, Trash2, AlertCircle } from 'lucide-react';
+import { Download, Check, Trash2, AlertCircle, Lock } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SA Public Holidays
@@ -146,6 +146,24 @@ export default function App() {
     return days;
   });
 
+  const [utilities, setUtilities] = useState(() => {
+    const saved = localStorage.getItem('utilities');
+    if (saved) return JSON.parse(saved);
+    // Migrate utility values from old timetable state if present
+    try {
+      const savedTT = localStorage.getItem('timetableTemplates');
+      if (savedTT) {
+        const parsed = JSON.parse(savedTT);
+        const u = {};
+        for (let day = 1; day <= 7; day++) u[day] = parsed[day]?.utility || '';
+        return u;
+      }
+    } catch {}
+    const u = {};
+    for (let day = 1; day <= 7; day++) u[day] = '';
+    return u;
+  });
+
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   const [dateAssignments, setDateAssignments] = useState([]);
 
@@ -155,6 +173,10 @@ export default function App() {
     const t = setTimeout(() => setSaveStatus({ text: 'All changes saved', saved: true }), 1000);
     return () => clearTimeout(t);
   }, [timetable]);
+
+  useEffect(() => {
+    localStorage.setItem('utilities', JSON.stringify(utilities));
+  }, [utilities]);
 
   const generateWeekdays = (start, end) => {
     const dates = [];
@@ -229,7 +251,7 @@ export default function App() {
         let subject = '', desc = '';
         if (typeof p.id === 'number') { subject = ds[p.id]; desc = `Session ${p.id}`; }
         else if (p.id === 'break1' || p.id === 'break2') { subject = ds[p.id] || 'Break'; desc = 'Break Time'; }
-        else if (p.id === 'utility') { subject = ds[p.id]; desc = 'Utility'; }
+        else if (p.id === 'utility') { subject = utilities[a.dayNumber]; desc = 'Utility'; }
         else if (a.dayOfWeek === 1) {
           if (p.id === 'homeroom') { subject = 'PD'; desc = 'Professional Development'; }
           else if (p.id === 'meetings') { subject = 'Meetings'; desc = 'Staff Meetings'; }
@@ -263,6 +285,9 @@ export default function App() {
 
   const handleCellChange = (day, id, value) =>
     setTimetable(prev => ({ ...prev, [day]: { ...prev[day], [id]: value } }));
+
+  const handleUtilityChange = (day, value) =>
+    setUtilities(prev => ({ ...prev, [day]: value }));
 
 
   const handleKeyNav = (e, row, cell) => {
@@ -349,21 +374,79 @@ export default function App() {
                       </td>
                       {[1,2,3,4,5,6,7].map(day => (
                         <td key={`${day}-${period.id}`} className="p-1.5 border-r last:border-r-0 border-gray-100">
-                          <input
-                            type="text"
-                            value={timetable[day]?.[period.id] || ''}
-                            onChange={(e) => handleCellChange(day, period.id, e.target.value)}
-                            onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
-                            placeholder=""
-                            className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
-                            autoComplete="off"
-                            spellCheck="false"
-                          />
+                          {period.id === 'utility' ? (
+                            <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-50 border border-gray-100 min-h-[26px]">
+                              <Lock size={9} className="shrink-0 text-gray-300" />
+                              <span className={`text-xs truncate ${utilities[day] ? 'text-gray-500' : 'text-gray-300'}`}>
+                                {utilities[day] || 'not set'}
+                              </span>
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={timetable[day]?.[period.id] || ''}
+                              onChange={(e) => handleCellChange(day, period.id, e.target.value)}
+                              onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
+                              placeholder=""
+                              className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
+                              autoComplete="off"
+                              spellCheck="false"
+                            />
+                          )}
                         </td>
                       ))}
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Utilities */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h2 className="font-medium text-gray-800">Utilities</h2>
+            <p className="text-sm text-gray-500">Enter your utility (club or society) per Day. Only exports when that Day falls on a Tue, Wed, or Thu.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[110px]">Period</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[115px]">Time</th>
+                  {[1,2,3,4,5,6,7].map(d => (
+                    <th key={d} className="text-center px-3 py-2.5 font-medium text-gray-600 border-r last:border-r-0 border-gray-200 min-w-[88px]">
+                      Day {d}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-white">
+                  <td className="px-4 py-2 border-r border-gray-200 whitespace-nowrap">
+                    <span className="text-gray-400 text-xs leading-tight">
+                      Utility
+                      <span className="block text-[10px] text-gray-300">Tue · Wed · Thu</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 border-r border-gray-200 text-gray-400 font-mono text-xs whitespace-nowrap">
+                    {REGULAR_SCHEDULE.find(p => p.id === 'utility').startTime} - {REGULAR_SCHEDULE.find(p => p.id === 'utility').endTime}
+                  </td>
+                  {[1,2,3,4,5,6,7].map(day => (
+                    <td key={day} className="p-1.5 border-r last:border-r-0 border-gray-100">
+                      <input
+                        type="text"
+                        value={utilities[day] || ''}
+                        onChange={(e) => handleUtilityChange(day, e.target.value)}
+                        placeholder=""
+                        className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
+                        autoComplete="off"
+                        spellCheck="false"
+                      />
+                    </td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
