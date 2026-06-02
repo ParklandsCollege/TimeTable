@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Check, Trash2, AlertCircle, Lock, Info, ChevronDown } from 'lucide-react';
+import { Download, Check, Trash2, AlertCircle, Info, ChevronDown } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SA Public Holidays
@@ -159,6 +159,11 @@ export default function App() {
     return { break1: true, break2: true };
   });
 
+  const [exportUtility, setExportUtility] = useState(() => {
+    const saved = localStorage.getItem('exportUtility');
+    return saved ? JSON.parse(saved) : true;
+  });
+
   const [dateRange, setDateRange] = useState(() => {
     const saved = localStorage.getItem('dateRange');
     return saved ? JSON.parse(saved) : { startDate: '', endDate: '' };
@@ -183,6 +188,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('exportBreaks', JSON.stringify(exportBreaks));
   }, [exportBreaks]);
+
+  useEffect(() => {
+    localStorage.setItem('exportUtility', JSON.stringify(exportUtility));
+  }, [exportUtility]);
 
   useEffect(() => {
     localStorage.setItem('dateRange', JSON.stringify(dateRange));
@@ -296,9 +305,11 @@ export default function App() {
         if (typeof p.id === 'number') { summary = ds[p.id]; description = `Session ${p.id}`; }
         else if (p.id === 'break1' || p.id === 'break2') { if (exportBreaks[p.id]) { summary = ds[p.id] || 'Break'; description = 'Break Time'; } }
         else if (p.id === 'utility') {
-          const wd = ['', '', 'tuesday', 'wednesday', 'thursday'][a.dayOfWeek];
-          summary = utilities[wd] || '';
-          description = 'Utility';
+          if (exportUtility) {
+            const wd = ['', '', 'tuesday', 'wednesday', 'thursday'][a.dayOfWeek];
+            summary = utilities[wd] || ds['utility'] || '';
+            description = 'Utility';
+          }
         }
         else if (a.dayOfWeek === 1) {
           if (p.id === 'homeroom') { summary = 'PD'; description = 'Professional Development'; }
@@ -430,7 +441,7 @@ export default function App() {
                 {GRID_ROWS.map((period, idx) => {
                   const isLesson = typeof period.id === 'number';
                   return (
-                    <tr key={period.id} className={`border-b border-gray-100 transition-opacity ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'} ${(period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id] ? 'opacity-30' : ''}`}>
+                    <tr key={period.id} className={`border-b border-gray-100 transition-opacity ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'} ${((period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id]) || (period.id === 'utility' && !exportUtility) ? 'opacity-30' : ''}`}>
                       <td className="px-4 py-2 border-r border-gray-200 text-gray-700 font-medium whitespace-nowrap">
                         {isLesson ? period.name : (
                           <span className="text-gray-400 text-xs leading-tight">
@@ -444,12 +455,7 @@ export default function App() {
                       </td>
                       {[1,2,3,4,5,6,7].map(day => (
                         <td key={`${day}-${period.id}`} className="p-1.5 border-r last:border-r-0 border-gray-100">
-                          {period.id === 'utility' ? (
-                            <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-50 border border-gray-100 min-h-[26px]">
-                              <Lock size={9} className="shrink-0 text-gray-300" />
-                              <span className="text-xs text-gray-300">see Utilities</span>
-                            </div>
-                          ) : (period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id] ? (
+                          {(period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id] ? (
                             <div className="px-2 py-1 min-h-[26px]" />
                           ) : (
                             <input
@@ -475,9 +481,23 @@ export default function App() {
 
         {/* Utilities */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-gray-100">
             <h2 className="font-medium text-gray-800">Utilities</h2>
-            <p className="text-sm text-gray-500">Enter your utility (club or society) per Day. Only exports when that Day falls on a Tue, Wed, or Thu.</p>
+            <p className="text-sm text-gray-500">Enter your club or society per weekday. Overrides anything entered in the Utility row above — only exports on Tue, Wed, Thu.</p>
+          </div>
+          <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50/70 flex items-center gap-6">
+            <span className="text-xs font-medium text-gray-500 shrink-0">Include in calendar:</span>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <button
+                role="switch"
+                aria-checked={exportUtility}
+                onClick={() => setExportUtility(p => !p)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${exportUtility ? 'bg-blue-500' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${exportUtility ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+              <span className={`text-xs transition-colors ${exportUtility ? 'text-gray-700' : 'text-gray-400'}`}>Utility</span>
+            </label>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border-collapse">
