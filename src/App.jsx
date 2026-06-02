@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Check, Trash2, AlertCircle, Lock } from 'lucide-react';
+import { Download, Check, Trash2, AlertCircle, Lock, Info, ChevronDown } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SA Public Holidays
@@ -134,6 +134,7 @@ const getScheduleForDate = (dateStr) => {
 
 export default function App() {
   const [saveStatus, setSaveStatus] = useState({ text: 'All changes saved', saved: true });
+  const [showImportGuide, setShowImportGuide] = useState(false);
 
   const [timetable, setTimetable] = useState(() => {
     const saved = localStorage.getItem('timetableTemplates');
@@ -618,16 +619,58 @@ export default function App() {
           </div>
         )}
 
-        {/* Generate */}
-        <div className="flex justify-end pb-2">
-          <button
-            onClick={generateAndDownload}
-            disabled={dateAssignments.length === 0}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-md transition-colors cursor-pointer"
-          >
-            <Download size={16} />
-            Download Calendar (.ics)
-          </button>
+        {/* Generate + import guide */}
+        <div className="space-y-3 pb-2">
+          <div className="flex justify-end">
+            <button
+              onClick={generateAndDownload}
+              disabled={dateAssignments.length === 0}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-md transition-colors cursor-pointer"
+            >
+              <Download size={16} />
+              Download Calendar (.ics)
+            </button>
+          </div>
+
+          <div className="border border-blue-100 rounded-lg bg-blue-50/40 overflow-hidden">
+            <button
+              onClick={() => setShowImportGuide(p => !p)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50/60 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2 font-medium">
+                <Info size={14} />
+                How to import into Google Calendar
+              </span>
+              <ChevronDown size={14} className={`transition-transform duration-200 ${showImportGuide ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showImportGuide && (
+              <div className="border-t border-blue-100 px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mt-4 mb-2">On Mac</h3>
+                  <ol className="space-y-1.5 text-xs text-gray-600 list-decimal list-inside">
+                    <li>Click <strong>Download Calendar (.ics)</strong> above</li>
+                    <li>Open <strong>calendar.google.com</strong> in your browser</li>
+                    <li>Click the <strong>Settings gear</strong> (top right) → <strong>Settings</strong></li>
+                    <li>In the left sidebar, click <strong>Import &amp; export</strong></li>
+                    <li>Click <strong>Select file from your computer</strong> and choose the <code className="bg-blue-100 px-1 rounded">.ics</code> file</li>
+                    <li>Click <strong>Import</strong> — events appear immediately</li>
+                  </ol>
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mt-4 mb-2">On iPad</h3>
+                  <ol className="space-y-1.5 text-xs text-gray-600 list-decimal list-inside">
+                    <li>Tap <strong>Download Calendar (.ics)</strong> above — the file saves to your <strong>Files</strong> app</li>
+                    <li>Open <strong>Safari</strong> and go to <strong>calendar.google.com</strong></li>
+                    <li>Tap the <strong>aA</strong> icon in the address bar → <strong>Request Desktop Website</strong></li>
+                    <li>Tap the <strong>Settings gear</strong> → <strong>Settings</strong></li>
+                    <li>Tap <strong>Import &amp; export</strong> → <strong>Select file from your computer</strong></li>
+                    <li>Navigate to <strong>Files</strong>, select the <code className="bg-blue-100 px-1 rounded">.ics</code> file, then tap <strong>Import</strong></li>
+                  </ol>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
       </div>
