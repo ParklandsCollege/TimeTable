@@ -244,16 +244,44 @@ export default function App() {
   };
 
   const generateAndDownload = () => {
-    let csv = 'Subject,Start Date,Start Time,End Date,End Time,All Day Event,Description,Location,Private\n';
-    const fmtDate = (d) => new Date(d).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-    const fmtTime = (t) => {
-      if (!t) return '';
-      const [h, m] = t.split(':');
-      return new Date(2000, 0, 1, +h, +m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const stamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+    const fmtDT = (dateStr, timeStr) => {
+      const [y, mo, d] = dateStr.split('-');
+      const [h, m] = timeStr.split(':');
+      return `${y}${mo}${d}T${h}${m}00`;
     };
-    const addRow = ({ subject, date, start, end, desc }) => {
-      csv += [subject, fmtDate(date), fmtTime(start), fmtDate(date), fmtTime(end), 'FALSE', desc, '', 'FALSE']
-        .map(f => `"${f}"`).join(',') + '\n';
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Parklands College//Timetable//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Parklands Timetable',
+      'X-WR-TIMEZONE:Africa/Johannesburg',
+      'BEGIN:VTIMEZONE',
+      'TZID:Africa/Johannesburg',
+      'BEGIN:STANDARD',
+      'DTSTART:19700101T000000',
+      'TZOFFSETFROM:+0200',
+      'TZOFFSETTO:+0200',
+      'TZNAME:SAST',
+      'END:STANDARD',
+      'END:VTIMEZONE',
+    ];
+
+    const addEvent = ({ uid, summary, date, start, end, description }) => {
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;TZID=Africa/Johannesburg:${fmtDT(date, start)}`,
+        `DTEND;TZID=Africa/Johannesburg:${fmtDT(date, end)}`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${description}`,
+        'STATUS:CONFIRMED',
+        'END:VEVENT',
+      );
     };
 
     dateAssignments.forEach(a => {
@@ -261,29 +289,32 @@ export default function App() {
       const ds = timetable[a.dayNumber];
       if (!ds) return;
       getScheduleForDate(a.date).forEach(p => {
-        let subject = '', desc = '';
-        if (typeof p.id === 'number') { subject = ds[p.id]; desc = `Session ${p.id}`; }
-        else if (p.id === 'break1' || p.id === 'break2') { if (exportBreaks[p.id]) { subject = ds[p.id] || 'Break'; desc = 'Break Time'; } }
+        let summary = '', description = '';
+        if (typeof p.id === 'number') { summary = ds[p.id]; description = `Session ${p.id}`; }
+        else if (p.id === 'break1' || p.id === 'break2') { if (exportBreaks[p.id]) { summary = ds[p.id] || 'Break'; description = 'Break Time'; } }
         else if (p.id === 'utility') {
           const wd = ['', '', 'tuesday', 'wednesday', 'thursday'][a.dayOfWeek];
-          subject = utilities[wd] || '';
-          desc = 'Utility';
+          summary = utilities[wd] || '';
+          description = 'Utility';
         }
         else if (a.dayOfWeek === 1) {
-          if (p.id === 'homeroom') { subject = 'PD'; desc = 'Professional Development'; }
-          else if (p.id === 'meetings') { subject = 'Meetings'; desc = 'Staff Meetings'; }
-        } else if (a.dayOfWeek === 5 && p.id === 'assembly') { subject = 'Assembly'; desc = 'School Assembly'; }
-        if (subject) addRow({ subject, date: a.date, start: p.startTime, end: p.endTime, desc });
+          if (p.id === 'homeroom') { summary = 'PD'; description = 'Professional Development'; }
+          else if (p.id === 'meetings') { summary = 'Meetings'; description = 'Staff Meetings'; }
+        }
+        else if (a.dayOfWeek === 5 && p.id === 'assembly') { summary = 'Assembly'; description = 'School Assembly'; }
+        if (summary) addEvent({ uid: `${a.date}-${p.id}@parklands-timetable`, summary, date: a.date, start: p.startTime, end: p.endTime, description });
       });
     });
 
+    lines.push('END:VCALENDAR');
+
     try {
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'parklands-timetable.csv';
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
+      const link = document.createElement('a');
+      link.href = url; link.download = 'parklands-timetable.ics';
+      document.body.appendChild(link); link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (e) { console.error(e); }
   };
@@ -356,9 +387,28 @@ export default function App() {
 
         {/* Timetable grid */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-gray-100">
             <h2 className="font-medium text-gray-800">Timetable Template</h2>
             <p className="text-sm text-gray-500">Enter subjects for each Day 1-7 rotation. Breaks, Assembly and Lines export automatically.</p>
+          </div>
+          <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50/70 flex items-center gap-6">
+            <span className="text-xs font-medium text-gray-500 shrink-0">Include breaks in calendar:</span>
+            {[
+              { id: 'break1', label: 'First break' },
+              { id: 'break2', label: 'Second break' },
+            ].map(b => (
+              <label key={b.id} className="flex items-center gap-2 cursor-pointer select-none">
+                <button
+                  role="switch"
+                  aria-checked={exportBreaks[b.id]}
+                  onClick={() => setExportBreaks(prev => ({ ...prev, [b.id]: !prev[b.id] }))}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${exportBreaks[b.id] ? 'bg-blue-500' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${exportBreaks[b.id] ? 'translate-x-4' : 'translate-x-0'}`} />
+                </button>
+                <span className={`text-xs transition-colors ${exportBreaks[b.id] ? 'text-gray-700' : 'text-gray-400'}`}>{b.label}</span>
+              </label>
+            ))}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border-collapse">
@@ -377,26 +427,12 @@ export default function App() {
                 {GRID_ROWS.map((period, idx) => {
                   const isLesson = typeof period.id === 'number';
                   return (
-                    <tr key={period.id} className={`border-b border-gray-100 ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}`}>
+                    <tr key={period.id} className={`border-b border-gray-100 transition-opacity ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'} ${(period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id] ? 'opacity-30' : ''}`}>
                       <td className="px-4 py-2 border-r border-gray-200 text-gray-700 font-medium whitespace-nowrap">
                         {isLesson ? period.name : (
                           <span className="text-gray-400 text-xs leading-tight">
-                            {(period.id === 'break1' || period.id === 'break2') ? (
-                              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={exportBreaks[period.id]}
-                                  onChange={(e) => setExportBreaks(prev => ({ ...prev, [period.id]: e.target.checked }))}
-                                  className="w-3 h-3 cursor-pointer accent-blue-500"
-                                />
-                                {period.name}
-                              </label>
-                            ) : (
-                              <>
-                                {period.name}
-                                {period.id === 'utility' && <span className="block text-[10px] text-gray-300">Tue · Wed · Thu</span>}
-                              </>
-                            )}
+                            {period.name}
+                            {period.id === 'utility' && <span className="block text-[10px] text-gray-300">Tue · Wed · Thu</span>}
                           </span>
                         )}
                       </td>
@@ -590,7 +626,7 @@ export default function App() {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-md transition-colors cursor-pointer"
           >
             <Download size={16} />
-            Generate Calendar CSV
+            Download Calendar (.ics)
           </button>
         </div>
 
