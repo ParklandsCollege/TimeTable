@@ -677,7 +677,7 @@ export default function App() {
                   <ol className="space-y-1.5 text-xs text-gray-600 list-decimal list-inside">
                     <li>Make sure the <strong>Google Calendar</strong> app is installed</li>
                     <li>Tap <strong>Download Calendar (.ics)</strong> above</li>
-                    <li>Tap the <strong>download icon</strong> that appears in Safari's toolbar</li>
+                    <li>Tap the <strong>download icon</strong> that appears in your browser's toolbar</li>
                     <li>Tap the <code className="bg-blue-100 px-1 rounded">.ics</code> file in the downloads list</li>
                     <li>Tap <strong>Open in Google Calendar</strong> — events are added immediately</li>
                   </ol>
