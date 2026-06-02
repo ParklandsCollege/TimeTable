@@ -406,23 +406,30 @@ export default function App() {
             <p className="text-sm text-gray-500">Enter subjects for each Day 1-7 rotation. Breaks, Assembly and Lines export automatically.</p>
           </div>
           <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50/70 flex items-center gap-6">
-            <span className="text-xs font-medium text-gray-500 shrink-0">Include breaks in calendar:</span>
+            <span className="text-xs font-medium text-gray-500 shrink-0">Include in calendar:</span>
             {[
-              { id: 'break1', label: 'First break' },
-              { id: 'break2', label: 'Second break' },
-            ].map(b => (
-              <label key={b.id} className="flex items-center gap-2 cursor-pointer select-none">
-                <button
-                  role="switch"
-                  aria-checked={exportBreaks[b.id]}
-                  onClick={() => setExportBreaks(prev => ({ ...prev, [b.id]: !prev[b.id] }))}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${exportBreaks[b.id] ? 'bg-blue-500' : 'bg-gray-200'}`}
-                >
-                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${exportBreaks[b.id] ? 'translate-x-4' : 'translate-x-0'}`} />
-                </button>
-                <span className={`text-xs transition-colors ${exportBreaks[b.id] ? 'text-gray-700' : 'text-gray-400'}`}>{b.label}</span>
-              </label>
-            ))}
+              { id: 'break1', label: 'First break', type: 'break' },
+              { id: 'break2', label: 'Second break', type: 'break' },
+              { id: 'utility', label: 'Utility', type: 'utility' },
+            ].map(item => {
+              const checked = item.type === 'utility' ? exportUtility : exportBreaks[item.id];
+              const toggle = item.type === 'utility'
+                ? () => setExportUtility(p => !p)
+                : () => setExportBreaks(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+              return (
+                <label key={item.id} className="flex items-center gap-2 cursor-pointer select-none">
+                  <button
+                    role="switch"
+                    aria-checked={checked}
+                    onClick={toggle}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${checked ? 'bg-blue-500' : 'bg-gray-200'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                  <span className={`text-xs transition-colors ${checked ? 'text-gray-700' : 'text-gray-400'}`}>{item.label}</span>
+                </label>
+              );
+            })}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border-collapse">
@@ -481,23 +488,9 @@ export default function App() {
 
         {/* Utilities */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="px-4 py-3 border-b border-gray-100">
+          <div className="px-4 py-3 border-b border-gray-200">
             <h2 className="font-medium text-gray-800">Utilities</h2>
             <p className="text-sm text-gray-500">Enter your club or society per weekday. Overrides anything entered in the Utility row above — only exports on Tue, Wed, Thu.</p>
-          </div>
-          <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50/70 flex items-center gap-6">
-            <span className="text-xs font-medium text-gray-500 shrink-0">Include in calendar:</span>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <button
-                role="switch"
-                aria-checked={exportUtility}
-                onClick={() => setExportUtility(p => !p)}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${exportUtility ? 'bg-blue-500' : 'bg-gray-200'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${exportUtility ? 'translate-x-4' : 'translate-x-0'}`} />
-              </button>
-              <span className={`text-xs transition-colors ${exportUtility ? 'text-gray-700' : 'text-gray-400'}`}>Utility</span>
-            </label>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border-collapse">
