@@ -152,6 +152,12 @@ export default function App() {
     return { tuesday: '', wednesday: '', thursday: '' };
   });
 
+  const [exportBreaks, setExportBreaks] = useState(() => {
+    const saved = localStorage.getItem('exportBreaks');
+    if (saved) return JSON.parse(saved);
+    return { break1: true, break2: true };
+  });
+
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   const [dateAssignments, setDateAssignments] = useState([]);
 
@@ -165,6 +171,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('utilities', JSON.stringify(utilities));
   }, [utilities]);
+
+  useEffect(() => {
+    localStorage.setItem('exportBreaks', JSON.stringify(exportBreaks));
+  }, [exportBreaks]);
 
   const generateWeekdays = (start, end) => {
     const dates = [];
@@ -238,7 +248,7 @@ export default function App() {
       getScheduleForDate(a.date).forEach(p => {
         let subject = '', desc = '';
         if (typeof p.id === 'number') { subject = ds[p.id]; desc = `Session ${p.id}`; }
-        else if (p.id === 'break1' || p.id === 'break2') { subject = ds[p.id] || 'Break'; desc = 'Break Time'; }
+        else if (p.id === 'break1' || p.id === 'break2') { if (exportBreaks[p.id]) { subject = ds[p.id] || 'Break'; desc = 'Break Time'; } }
         else if (p.id === 'utility') {
           const wd = ['', '', 'tuesday', 'wednesday', 'thursday'][a.dayOfWeek];
           subject = utilities[wd] || '';
@@ -356,8 +366,22 @@ export default function App() {
                       <td className="px-4 py-2 border-r border-gray-200 text-gray-700 font-medium whitespace-nowrap">
                         {isLesson ? period.name : (
                           <span className="text-gray-400 text-xs leading-tight">
-                            {period.name}
-                            {period.id === 'utility' && <span className="block text-[10px] text-gray-300">Tue · Wed · Thu</span>}
+                            {(period.id === 'break1' || period.id === 'break2') ? (
+                              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={exportBreaks[period.id]}
+                                  onChange={(e) => setExportBreaks(prev => ({ ...prev, [period.id]: e.target.checked }))}
+                                  className="w-3 h-3 cursor-pointer accent-blue-500"
+                                />
+                                {period.name}
+                              </label>
+                            ) : (
+                              <>
+                                {period.name}
+                                {period.id === 'utility' && <span className="block text-[10px] text-gray-300">Tue · Wed · Thu</span>}
+                              </>
+                            )}
                           </span>
                         )}
                       </td>
@@ -371,6 +395,8 @@ export default function App() {
                               <Lock size={9} className="shrink-0 text-gray-300" />
                               <span className="text-xs text-gray-300">see Utilities</span>
                             </div>
+                          ) : (period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id] ? (
+                            <div className="px-2 py-1 min-h-[26px]" />
                           ) : (
                             <input
                               type="text"
