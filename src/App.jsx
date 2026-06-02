@@ -245,7 +245,9 @@ export default function App() {
   };
 
   const generateAndDownload = () => {
-    const stamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
     const fmtDT = (dateStr, timeStr) => {
       const [y, mo, d] = dateStr.split('-');
       const [h, m] = timeStr.split(':');
