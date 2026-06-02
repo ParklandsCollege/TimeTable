@@ -675,12 +675,11 @@ export default function App() {
                 <div>
                   <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mt-4 mb-2">On iPad</h3>
                   <ol className="space-y-1.5 text-xs text-gray-600 list-decimal list-inside">
-                    <li>Tap <strong>Download Calendar (.ics)</strong> above — the file saves to your <strong>Files</strong> app</li>
-                    <li>Open <strong>Safari</strong> and go to <strong>calendar.google.com</strong></li>
-                    <li>Tap the <strong>aA</strong> icon in the address bar → <strong>Request Desktop Website</strong></li>
-                    <li>Tap the <strong>Settings gear</strong> → <strong>Settings</strong></li>
-                    <li>Tap <strong>Import &amp; export</strong> → <strong>Select file from your computer</strong></li>
-                    <li>Navigate to <strong>Files</strong>, select the <code className="bg-blue-100 px-1 rounded">.ics</code> file, then tap <strong>Import</strong></li>
+                    <li>Make sure the <strong>Google Calendar</strong> app is installed</li>
+                    <li>Tap <strong>Download Calendar (.ics)</strong> above</li>
+                    <li>Tap the <strong>download icon</strong> that appears in Safari's toolbar</li>
+                    <li>Tap the <code className="bg-blue-100 px-1 rounded">.ics</code> file in the downloads list</li>
+                    <li>Tap <strong>Open in Google Calendar</strong> — events are added immediately</li>
                   </ol>
                 </div>
               </div>
