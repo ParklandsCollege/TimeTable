@@ -100,7 +100,7 @@ const FRIDAY_SCHEDULE = [
   { id: 'assembly', name: 'Assembly', startTime: '13:30', endTime: '14:30' },
 ];
 
-const GRID_ROWS = REGULAR_SCHEDULE.filter(p => typeof p.id === 'number' || p.id === 'utility');
+const GRID_ROWS = REGULAR_SCHEDULE.filter(p => typeof p.id === 'number' || p.id === 'utility' || p.id === 'break1' || p.id === 'break2');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Storage
@@ -229,7 +229,7 @@ export default function App() {
         let subject = '', desc = '';
         if (typeof p.id === 'number') { subject = ds[p.id]; desc = `Session ${p.id}`; }
         else if (p.id === 'break1' || p.id === 'break2') { subject = ds[p.id] || 'Break'; desc = 'Break Time'; }
-        else if (p.id === 'utility') { subject = ds[p.id] || 'Meeting/Utility'; desc = 'Meeting/Utility'; }
+        else if (p.id === 'utility') { subject = ds[p.id]; desc = 'Utility'; }
         else if (a.dayOfWeek === 1) {
           if (p.id === 'homeroom') { subject = 'PD'; desc = 'Professional Development'; }
           else if (p.id === 'meetings') { subject = 'Meetings'; desc = 'Staff Meetings'; }
@@ -290,7 +290,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <img src="logo.png" alt="Parklands College" className="h-12 w-auto" />
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Parklands College — Timetable Generator</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Parklands College - Timetable Generator</h1>
               <p className="text-sm text-gray-500 mt-0.5">Build your rotation and export to Google Calendar</p>
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function App() {
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
           <div className="px-4 py-3 border-b border-gray-200">
             <h2 className="font-medium text-gray-800">Timetable Template</h2>
-            <p className="text-sm text-gray-500">Enter subjects for each Day 1–7 rotation. Breaks, Assembly and Lines export automatically.</p>
+            <p className="text-sm text-gray-500">Enter subjects for each Day 1-7 rotation. Breaks, Assembly and Lines export automatically.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border-collapse">
@@ -336,10 +336,15 @@ export default function App() {
                   return (
                     <tr key={period.id} className={`border-b border-gray-100 ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}`}>
                       <td className="px-4 py-2 border-r border-gray-200 text-gray-700 font-medium whitespace-nowrap">
-                        {isLesson ? period.name : <span className="text-gray-400 text-xs">{period.name}</span>}
+                        {isLesson ? period.name : (
+                          <span className="text-gray-400 text-xs leading-tight">
+                            {period.name}
+                            {period.id === 'utility' && <span className="block text-[10px] text-gray-300">Tue · Wed · Thu</span>}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2 border-r border-gray-200 text-gray-400 font-mono text-xs whitespace-nowrap">
-                        {period.startTime}–{period.endTime}
+                        {period.startTime} - {period.endTime}
                       </td>
                       {[1,2,3,4,5,6,7].map(day => (
                         <td key={`${day}-${period.id}`} className="p-1.5 border-r last:border-r-0 border-gray-100">
@@ -348,7 +353,7 @@ export default function App() {
                             value={timetable[day]?.[period.id] || ''}
                             onChange={(e) => handleCellChange(day, period.id, e.target.value)}
                             onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
-                            placeholder={isLesson ? '—' : ''}
+                            placeholder=""
                             className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
                             autoComplete="off"
                             spellCheck="false"
