@@ -1,3 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html, body {
+    font-family: 'Fira Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .clay-card {
+    @apply bg-white rounded-3xl;
+    box-shadow:
+      8px 8px 24px rgba(0, 0, 0, 0.08),
+      -4px -4px 12px rgba(255, 255, 255, 0.95);
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+  }
+
+  .clay-input {
+    @apply bg-slate-50 rounded-xl border border-slate-200 transition-all duration-150;
+    box-shadow:
+      inset 2px 2px 5px rgba(0, 0, 0, 0.05),
+      inset -1px -1px 3px rgba(255, 255, 255, 1);
+  }
+
+  .clay-input:focus {
+    @apply bg-white border-indigo-300 outline-none;
+    box-shadow:
+      inset 1px 1px 3px rgba(0, 0, 0, 0.03),
+      0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .clay-btn-primary {
+    @apply bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold rounded-2xl transition-all duration-150 cursor-pointer;
+    box-shadow: 4px 4px 14px rgba(34, 197, 94, 0.3), -2px -2px 6px rgba(255, 255, 255, 0.9);
+  }
+
+  .clay-btn-primary:hover {
+    box-shadow: 5px 5px 18px rgba(34, 197, 94, 0.4), -2px -2px 6px rgba(255, 255, 255, 0.9);
+  }
+
+  .clay-btn-primary:active {
+    box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  .clay-btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    box-shadow: none;
+  }
+}
