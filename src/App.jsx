@@ -158,8 +158,15 @@ export default function App() {
     return { break1: true, break2: true };
   });
 
-  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
-  const [dateAssignments, setDateAssignments] = useState([]);
+  const [dateRange, setDateRange] = useState(() => {
+    const saved = localStorage.getItem('dateRange');
+    return saved ? JSON.parse(saved) : { startDate: '', endDate: '' };
+  });
+
+  const [dateAssignments, setDateAssignments] = useState(() => {
+    const saved = localStorage.getItem('dateAssignments');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   useEffect(() => {
     localStorage.setItem('timetableTemplates', JSON.stringify(timetable));
@@ -175,6 +182,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('exportBreaks', JSON.stringify(exportBreaks));
   }, [exportBreaks]);
+
+  useEffect(() => {
+    localStorage.setItem('dateRange', JSON.stringify(dateRange));
+  }, [dateRange]);
+
+  useEffect(() => {
+    localStorage.setItem('dateAssignments', JSON.stringify(dateAssignments));
+  }, [dateAssignments]);
 
   const generateWeekdays = (start, end) => {
     const dates = [];
