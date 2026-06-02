@@ -137,11 +137,18 @@ export default function App() {
 
   const [timetable, setTimetable] = useState(() => {
     const saved = localStorage.getItem('timetableTemplates');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      for (let day = 1; day <= 7; day++) {
+        if (parsed[day] && parsed[day].utilityActive === undefined) parsed[day].utilityActive = false;
+      }
+      return parsed;
+    }
     const days = {};
     for (let day = 1; day <= 7; day++) {
       days[day] = {};
       REGULAR_SCHEDULE.forEach(p => { days[day][p.id] = ''; });
+      days[day].utilityActive = false;
     }
     return days;
   });
@@ -229,7 +236,7 @@ export default function App() {
         let subject = '', desc = '';
         if (typeof p.id === 'number') { subject = ds[p.id]; desc = `Session ${p.id}`; }
         else if (p.id === 'break1' || p.id === 'break2') { subject = ds[p.id] || 'Break'; desc = 'Break Time'; }
-        else if (p.id === 'utility') { subject = ds[p.id]; desc = 'Utility'; }
+        else if (p.id === 'utility') { if (ds.utilityActive) { subject = ds[p.id] || 'Utility'; desc = 'Utility'; } }
         else if (a.dayOfWeek === 1) {
           if (p.id === 'homeroom') { subject = 'PD'; desc = 'Professional Development'; }
           else if (p.id === 'meetings') { subject = 'Meetings'; desc = 'Staff Meetings'; }
@@ -255,6 +262,7 @@ export default function App() {
     for (let day = 1; day <= 7; day++) {
       empty[day] = {};
       REGULAR_SCHEDULE.forEach(p => { empty[day][p.id] = ''; });
+      empty[day].utilityActive = false;
     }
     setTimetable(empty);
     setDateRange({ startDate: '', endDate: '' });
@@ -263,6 +271,9 @@ export default function App() {
 
   const handleCellChange = (day, id, value) =>
     setTimetable(prev => ({ ...prev, [day]: { ...prev[day], [id]: value } }));
+
+  const handleUtilityToggle = (day, checked) =>
+    setTimetable(prev => ({ ...prev, [day]: { ...prev[day], utilityActive: checked } }));
 
   const handleKeyNav = (e, row, cell) => {
     const rows = Array.from(row.parentElement.children);
@@ -348,16 +359,39 @@ export default function App() {
                       </td>
                       {[1,2,3,4,5,6,7].map(day => (
                         <td key={`${day}-${period.id}`} className="p-1.5 border-r last:border-r-0 border-gray-100">
-                          <input
-                            type="text"
-                            value={timetable[day]?.[period.id] || ''}
-                            onChange={(e) => handleCellChange(day, period.id, e.target.value)}
-                            onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
-                            placeholder=""
-                            className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
-                            autoComplete="off"
-                            spellCheck="false"
-                          />
+                          {period.id === 'utility' ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                checked={timetable[day]?.utilityActive || false}
+                                onChange={(e) => handleUtilityToggle(day, e.target.checked)}
+                                className="w-3 h-3 shrink-0 cursor-pointer accent-blue-500"
+                                title="Has utility this day"
+                              />
+                              <input
+                                type="text"
+                                value={timetable[day]?.utility || ''}
+                                onChange={(e) => handleCellChange(day, 'utility', e.target.value)}
+                                onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
+                                disabled={!timetable[day]?.utilityActive}
+                                placeholder={timetable[day]?.utilityActive ? 'Utility' : ''}
+                                className={`w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors ${!timetable[day]?.utilityActive ? 'opacity-30 pointer-events-none' : ''}`}
+                                autoComplete="off"
+                                spellCheck="false"
+                              />
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={timetable[day]?.[period.id] || ''}
+                              onChange={(e) => handleCellChange(day, period.id, e.target.value)}
+                              onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
+                              placeholder=""
+                              className="w-full px-2 py-1 text-xs text-gray-800 bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
+                              autoComplete="off"
+                              spellCheck="false"
+                            />
+                          )}
                         </td>
                       ))}
                     </tr>
