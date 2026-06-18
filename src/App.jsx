@@ -312,11 +312,10 @@ export default function App() {
         if (typeof p.id === 'number') { summary = ds[p.id]; description = `Session ${p.id}`; }
         else if (p.id === 'break1' || p.id === 'break2') { if (exportBreaks[p.id]) { summary = ds[p.id] || 'Break'; description = 'Break Time'; } }
         else if (p.id === 'utility') {
-          if (exportUtility) {
-            const wd = ['', '', 'tuesday', 'wednesday', 'thursday'][a.dayOfWeek];
-            summary = utilities[wd] || ds['utility'] || '';
-            description = 'Utility';
-          }
+          const wd = ['', '', 'tuesday', 'wednesday', 'thursday'][a.dayOfWeek];
+          const clubOverride = utilities[wd];
+          if (clubOverride) { summary = clubOverride; description = 'Utility'; }
+          else if (exportUtility) { summary = ds['utility'] || ''; description = 'Utility'; }
         }
         else if (a.dayOfWeek === 1) {
           if (p.id === 'homeroom') { summary = 'PD'; description = 'Professional Development'; }
