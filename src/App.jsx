@@ -363,10 +363,17 @@ export default function App() {
     const rows = Array.from(row.parentElement.children);
     const ri = rows.indexOf(row);
     const ci = Array.from(row.children).indexOf(cell);
+    const findInput = (start, step) => {
+      for (let i = start; rows[i]; i += step) {
+        const input = rows[i].children[ci]?.querySelector('input');
+        if (input) return input;
+      }
+      return null;
+    };
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
-      rows[ri + 1]?.children[ci]?.querySelector('input')?.focus(); e.preventDefault();
+      findInput(ri + 1, 1)?.focus(); e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      rows[ri - 1]?.children[ci]?.querySelector('input')?.focus(); e.preventDefault();
+      findInput(ri - 1, -1)?.focus(); e.preventDefault();
     } else if (e.key === 'ArrowLeft') {
       row.children[ci - 1]?.querySelector('input')?.focus(); e.preventDefault();
     } else if (e.key === 'ArrowRight') {
@@ -469,7 +476,7 @@ export default function App() {
                       </td>
                       {[1,2,3,4,5,6,7].map(day => (
                         <td key={`${day}-${period.id}`} className="p-1.5 border-r last:border-r-0 border-gray-100">
-                          {(period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id] ? (
+                          {((period.id === 'break1' || period.id === 'break2') && !exportBreaks[period.id]) || (period.id === 'utility' && !exportUtility) ? (
                             <div className="px-2 py-1 min-h-[26px]" />
                           ) : (
                             <input
