@@ -5,6 +5,13 @@ import { Download, Check, Trash2, AlertCircle, Info, ChevronDown } from 'lucide-
 // SA Public Holidays
 // ─────────────────────────────────────────────────────────────────────────────
 
+const toLocalDateStr = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 const calculateEaster = (year) => {
   const a = year % 19, b = Math.floor(year / 100), c = year % 100;
   const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
@@ -40,11 +47,11 @@ const getSAPublicHolidays = (year) => {
 
   const result = [];
   fixed.forEach(h => {
-    const dateStr = h.date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(h.date);
     result.push({ dateStr, name: h.name });
     if (h.date.getDay() === 0) {
       const mon = new Date(h.date); mon.setDate(mon.getDate() + 1);
-      result.push({ dateStr: mon.toISOString().split('T')[0], name: `${h.name} (observed)` });
+      result.push({ dateStr: toLocalDateStr(mon), name: `${h.name} (observed)` });
     }
   });
   return result;
