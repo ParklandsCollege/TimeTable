@@ -107,6 +107,13 @@ const FRIDAY_SCHEDULE = [
   { id: 'assembly', name: 'Assembly', startTime: '13:30', endTime: '14:30' },
 ];
 
+const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+const DUTY_SLOTS = [
+  { id: 'utility', label: 'Utility' },
+  { id: 'break1',  label: 'First break' },
+  { id: 'break2',  label: 'Second break' },
+];
+
 const GRID_ROWS = REGULAR_SCHEDULE.filter(p => typeof p.id === 'number' || p.id === 'utility' || p.id === 'break1' || p.id === 'break2');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +167,15 @@ export default function App() {
     return { tuesday: '', wednesday: '', thursday: '' };
   });
 
+  // { monday: { break1: 'Field' }, tuesday: { utility: 'Gate' }, ... }
+  const [breakDuties, setBreakDuties] = useState(() => {
+    try {
+      const saved = localStorage.getItem('breakDuties');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
+
   const [exportBreaks, setExportBreaks] = useState(() => {
     const saved = localStorage.getItem('exportBreaks');
     if (saved) return JSON.parse(saved);
@@ -191,6 +207,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('utilities', JSON.stringify(utilities));
   }, [utilities]);
+
+  useEffect(() => {
+    localStorage.setItem('breakDuties', JSON.stringify(breakDuties));
+  }, [breakDuties]);
 
   useEffect(() => {
     localStorage.setItem('exportBreaks', JSON.stringify(exportBreaks));
@@ -322,6 +342,9 @@ export default function App() {
           else if (p.id === 'meetings') { summary = 'Meetings'; description = 'Staff Meetings'; }
         }
         else if (a.dayOfWeek === 5 && p.id === 'assembly') { summary = 'Assembly'; description = 'School Assembly'; }
+        // Break duty for this weekday replaces whatever would otherwise export in that slot
+        const duty = (breakDuties[WEEKDAYS[a.dayOfWeek - 1]]?.[p.id] || '').trim();
+        if (duty) { summary = `Duty: ${duty}`; description = `${p.id === 'utility' ? 'Utility' : p.id === 'break1' ? 'First break' : 'Second break'} duty`; }
         if (summary) addEvent({ uid: `${a.date}-${p.id}@parklands-timetable`, summary, date: a.date, start: p.startTime, end: p.endTime, description });
       });
     });
@@ -356,6 +379,15 @@ export default function App() {
 
   const handleUtilityChange = (weekday, value) =>
     setUtilities(prev => ({ ...prev, [weekday]: value }));
+
+  const handleDutyChange = (weekday, slot, value) =>
+    setBreakDuties(prev => ({ ...prev, [weekday]: { ...prev[weekday], [slot]: value } }));
+
+  const dutySchedules = loadFromStorage();
+  const scheduleForWeekday = (wd) =>
+    wd === 'monday' ? dutySchedules.monday : wd === 'friday' ? dutySchedules.friday : dutySchedules.regular;
+  const dutyCount = WEEKDAYS.reduce(
+    (n, wd) => n + DUTY_SLOTS.filter(s => (breakDuties[wd]?.[s.id] || '').trim()).length, 0);
 
 
   const handleKeyNav = (e, row, cell) => {
@@ -540,6 +572,65 @@ export default function App() {
                     </td>
                   ))}
                 </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Break duties */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-medium text-gray-800">Break Duties</h2>
+              <p className="text-sm text-gray-500">Enter your duty venue on the weekday and slot you're on duty (usually 1 or 2 per week). Repeats every week and replaces the break or utility in that slot.</p>
+            </div>
+            <span className={`shrink-0 text-xs mt-1 ${dutyCount > 2 ? 'text-amber-700' : 'text-gray-500'}`}>
+              {dutyCount} {dutyCount === 1 ? 'duty' : 'duties'} / week
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600 border-r border-gray-200 min-w-[110px]">Period</th>
+                  {WEEKDAYS.map(wd => (
+                    <th key={wd} className="text-center px-3 py-2.5 font-medium text-gray-600 border-r last:border-r-0 border-gray-200 min-w-[120px] capitalize">
+                      {wd}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {DUTY_SLOTS.map((slot, idx) => (
+                  <tr key={slot.id} className={`border-b border-gray-100 ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}`}>
+                    <td className="px-4 py-2 border-r border-gray-200 whitespace-nowrap">
+                      <span className="text-gray-400 text-xs">{slot.label}</span>
+                    </td>
+                    {WEEKDAYS.map(wd => {
+                      const period = scheduleForWeekday(wd)?.find(p => p.id === slot.id);
+                      return (
+                        <td key={wd} className="p-1.5 border-r last:border-r-0 border-gray-100">
+                          {period ? (
+                            <div>
+                              <input
+                                type="text"
+                                value={breakDuties[wd]?.[slot.id] || ''}
+                                onChange={(e) => handleDutyChange(wd, slot.id, e.target.value)}
+                                onKeyDown={(e) => handleKeyNav(e, e.target.closest('tr'), e.target.closest('td'))}
+                                placeholder={`${period.startTime} - ${period.endTime}`}
+                                className="w-full px-2 py-1 text-xs text-gray-800 placeholder:text-gray-300 placeholder:font-mono bg-transparent border border-transparent rounded focus:outline-none focus:border-blue-400 focus:bg-white hover:border-gray-300 transition-colors"
+                                autoComplete="off"
+                                spellCheck="false"
+                              />
+                            </div>
+                          ) : (
+                            <div className="px-2 py-1 min-h-[26px] text-center text-xs text-gray-300">—</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
