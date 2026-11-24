@@ -722,33 +722,17 @@ export default function App() {
                 onChange={(e) => applyQuarterPreset(e.target.value)}
                 className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer"
               >
-                <option value="" disabled>Custom dates</option>
+                <option value="" disabled>Select a quarter</option>
                 {QUARTER_PRESETS.map(p => (
                   <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="start-date" className="block text-sm text-gray-600 mb-1">Start</label>
-              <input
-                id="start-date"
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer"
-              />
-            </div>
-            <div>
-              <label htmlFor="end-date" className="block text-sm text-gray-600 mb-1">End</label>
-              <input
-                id="end-date"
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer"
-              />
-            </div>
           </div>
+          <p className="mt-3 flex items-center gap-1.5 text-sm text-gray-600">
+            <Info size={14} className="text-blue-500 shrink-0" />
+            Each quarter is preloaded with the correct day numbers from the school calendar, so you no longer have to fill in the days manually.
+          </p>
           {holidayCount > 0 && (
             <p className="mt-3 flex items-center gap-1.5 text-sm text-amber-700">
               <AlertCircle size={14} />
@@ -807,16 +791,11 @@ export default function App() {
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <select
-                              value={a.dayNumber}
-                              onChange={(e) => updateDayNumber(index, parseInt(e.target.value))}
-                              className="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
-                            >
-                              <option value={0}>No Schedule</option>
-                              {[1,2,3,4,5,6,7].map(d => (
-                                <option key={d} value={d}>Day {d}</option>
-                              ))}
-                            </select>
+                            {a.dayNumber === 0 ? (
+                              <span className="text-xs text-gray-400">No Schedule</span>
+                            ) : (
+                              <span className="text-xs font-medium text-gray-700">Day {a.dayNumber}</span>
+                            )}
                           </td>
                         </tr>
                       );
