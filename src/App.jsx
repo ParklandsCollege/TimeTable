@@ -136,10 +136,10 @@ const MONDAY_SCHEDULE = [
   { id: 'break1',   name: 'Break',        startTime: '10:20', endTime: '10:50' },
   { id: 4,          name: 'Lesson 4',     startTime: '10:55', endTime: '11:30' },
   { id: 5,          name: 'Lesson 5',     startTime: '11:35', endTime: '12:10' },
-  { id: 'meetings', name: 'Meetings',     startTime: '12:15', endTime: '12:45' },
-  { id: 'break2',   name: 'Break',        startTime: '12:45', endTime: '13:15' },
-  { id: 6,          name: 'Lesson 6',     startTime: '13:20', endTime: '13:55' },
-  { id: 7,          name: 'Lesson 7',     startTime: '14:00', endTime: '14:35' },
+  { id: 'meetings', name: 'Meetings',     startTime: '12:15', endTime: '12:40' },
+  { id: 'break2',   name: 'Break',        startTime: '12:40', endTime: '13:10' },
+  { id: 6,          name: 'Lesson 6',     startTime: '13:15', endTime: '13:50' },
+  { id: 7,          name: 'Lesson 7',     startTime: '13:55', endTime: '14:30' },
 ];
 
 const REGULAR_SCHEDULE = [
@@ -147,12 +147,12 @@ const REGULAR_SCHEDULE = [
   { id: 2,         name: 'Lesson 2', startTime: '08:35', endTime: '09:15' },
   { id: 3,         name: 'Lesson 3', startTime: '09:20', endTime: '10:00' },
   { id: 'utility', name: 'Utility',  startTime: '10:05', endTime: '10:45' },
-  { id: 'break1',  name: 'Break',    startTime: '10:45', endTime: '11:05' },
-  { id: 4,         name: 'Lesson 4', startTime: '11:10', endTime: '11:50' },
-  { id: 5,         name: 'Lesson 5', startTime: '11:55', endTime: '12:35' },
-  { id: 'break2',  name: 'Break',    startTime: '12:35', endTime: '13:05' },
+  { id: 'break1',  name: 'Break',    startTime: '10:45', endTime: '11:10' },
+  { id: 4,         name: 'Lesson 4', startTime: '11:15', endTime: '11:55' },
+  { id: 5,         name: 'Lesson 5', startTime: '12:00', endTime: '12:40' },
+  { id: 'break2',  name: 'Break',    startTime: '12:40', endTime: '13:05' },
   { id: 6,         name: 'Lesson 6', startTime: '13:10', endTime: '13:50' },
-  { id: 7,         name: 'Lesson 7', startTime: '13:55', endTime: '14:35' },
+  { id: 7,         name: 'Lesson 7', startTime: '13:55', endTime: '14:30' },
 ];
 
 const FRIDAY_SCHEDULE = [
@@ -181,19 +181,11 @@ const GRID_ROWS = REGULAR_SCHEDULE.filter(p => typeof p.id === 'number' || p.id 
 // Storage
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'savedSchedules';
+// Bell times are fixed in code; any old 'savedSchedules' in localStorage is
+// ignored so browsers that stored earlier times always get the current ones.
 const DEFAULT_SCHEDULES = { monday: MONDAY_SCHEDULE, friday: FRIDAY_SCHEDULE, regular: REGULAR_SCHEDULE };
 
-const saveToStorage = (schedules) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules)); } catch {}
-};
-
-const loadFromStorage = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_SCHEDULES;
-  } catch { return DEFAULT_SCHEDULES; }
-};
+const loadFromStorage = () => DEFAULT_SCHEDULES;
 
 const getScheduleForDate = (dateStr) => {
   const schedules = loadFromStorage();
