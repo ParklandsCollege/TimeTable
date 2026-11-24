@@ -63,6 +63,67 @@ const getHolidayForDate = (dateStr) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Quarter presets (day allocations from the official calendar timeline)
+// Weekdays inside the range that are missing from `days` become No Schedule
+// with `skipReason` as the label.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const QUARTER_PRESETS = [
+  {
+    id: '2027-q1',
+    label: '2027 Q1 – Summer Quarter (19 Jan – 17 Mar)',
+    startDate: '2027-01-19',
+    endDate: '2027-03-17',
+    skipReason: 'Grade camps',
+    days: {
+      '2027-01-19': 1, '2027-01-20': 1, '2027-01-21': 2, '2027-01-22': 3,
+      '2027-01-25': 3, '2027-01-26': 4,
+      '2027-02-01': 4, '2027-02-02': 5, '2027-02-03': 6, '2027-02-04': 7, '2027-02-05': 1,
+      '2027-02-08': 2, '2027-02-09': 3, '2027-02-10': 4, '2027-02-11': 5, '2027-02-12': 6,
+      '2027-02-15': 7, '2027-02-16': 1, '2027-02-17': 2, '2027-02-18': 3, '2027-02-19': 4,
+      '2027-02-22': 5, '2027-02-23': 6, '2027-02-24': 7, '2027-02-25': 1, '2027-02-26': 2,
+      '2027-03-01': 3, '2027-03-02': 4, '2027-03-03': 5, '2027-03-04': 6, '2027-03-05': 7,
+      '2027-03-08': 1, '2027-03-09': 2, '2027-03-10': 3, '2027-03-11': 4, '2027-03-12': 5,
+      '2027-03-15': 6, '2027-03-16': 7, '2027-03-17': 1,
+    },
+  },
+];
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const buildPresetAssignments = (preset) => {
+  const [sy, sm, sd] = preset.startDate.split('-').map(Number);
+  const [ey, em, ed] = preset.endDate.split('-').map(Number);
+  const cur = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  const dates = [];
+  let weekNum = 1, seenWeekday = false;
+
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (dow === 1 && seenWeekday) weekNum++;
+    if (dow !== 0 && dow !== 6) {
+      seenWeekday = true;
+      const dateStr = toLocalDateStr(cur);
+      const holiday = getHolidayForDate(dateStr);
+      const dayNumber = preset.days[dateStr];
+      const skipReason = !holiday && !dayNumber ? preset.skipReason : null;
+      dates.push({
+        date: dateStr,
+        dayNumber: holiday || !dayNumber ? 0 : dayNumber,
+        dayOfWeek: dow,
+        dayName: DAY_NAMES[dow],
+        weekNumber: weekNum,
+        holiday: holiday ? holiday.name : null,
+        skipReason,
+      });
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Schedules
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -264,15 +325,28 @@ export default function App() {
     if (next.startDate && next.endDate) setDateAssignments(generateWeekdays(next.startDate, next.endDate));
   };
 
+  const activePreset = QUARTER_PRESETS.find(
+    p => p.startDate === dateRange.startDate && p.endDate === dateRange.endDate
+  );
+
+  const applyQuarterPreset = (presetId) => {
+    const preset = QUARTER_PRESETS.find(p => p.id === presetId);
+    if (!preset) return;
+    if (dateAssignments.length > 0 &&
+        !window.confirm(`Replace the current daily schedule with ${preset.label}?`)) return;
+    setDateRange({ startDate: preset.startDate, endDate: preset.endDate });
+    setDateAssignments(buildPresetAssignments(preset));
+  };
+
   const updateDayNumber = (index, newNum) => {
     if (!window.confirm('This will update day numbers for all subsequent dates. Continue?')) return;
     setDateAssignments(prev => {
       const next = [...prev];
-      next[index] = { ...next[index], dayNumber: newNum };
+      next[index] = { ...next[index], dayNumber: newNum, skipReason: newNum ? null : next[index].skipReason };
       if (newNum !== 0) {
         let last = newNum;
         for (let i = index + 1; i < next.length; i++) {
-          if (next[i].holiday) { next[i] = { ...next[i], dayNumber: 0 }; }
+          if (next[i].holiday || next[i].skipReason) { next[i] = { ...next[i], dayNumber: 0 }; }
           else { last = last === 7 ? 1 : last + 1; next[i] = { ...next[i], dayNumber: last }; }
         }
       }
@@ -641,6 +715,20 @@ export default function App() {
           <h2 className="font-medium text-gray-800 mb-3">Term Dates</h2>
           <div className="flex flex-wrap gap-4 items-end">
             <div>
+              <label htmlFor="quarter-preset" className="block text-sm text-gray-600 mb-1">Quarter</label>
+              <select
+                id="quarter-preset"
+                value={activePreset ? activePreset.id : ''}
+                onChange={(e) => applyQuarterPreset(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer"
+              >
+                <option value="" disabled>Custom dates</option>
+                {QUARTER_PRESETS.map(p => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label htmlFor="start-date" className="block text-sm text-gray-600 mb-1">Start</label>
               <input
                 id="start-date"
@@ -712,6 +800,8 @@ export default function App() {
                           <td className="px-4 py-2 border-r border-gray-200">
                             {a.holiday ? (
                               <span className="text-xs text-amber-700 font-medium">{a.holiday}</span>
+                            ) : a.skipReason && a.dayNumber === 0 ? (
+                              <span className="text-xs text-gray-500 italic">{a.skipReason}</span>
                             ) : (
                               <span className="text-xs text-gray-500">{scheduleType}</span>
                             )}
